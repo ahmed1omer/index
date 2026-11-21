@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>مشغل الأغاني</title>
+  <!-- مكتبة تليجرام الأساسية -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- خط عربي عصري -->
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: rgba(30, 41, 59, 0.75);
+      --accent: #38bdf8;
+      --accent-glow: rgba(56, 189, 248, 0.35);
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+      --border: rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Cairo', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: radial-gradient(circle at top right, #1e293b, #090d16 80%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 16px 16px 120px 16px;
+      overflow-x: hidden;
+    }
+
+    /* الهيدر */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .welcome h1 {
+      font-size: 1.25rem;
+      font-weight: 800;
+    }
+
+    .welcome p {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+
+    .badge {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    /* شريط البحث */
+    .search-box {
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 12px 16px;
+      border-radius: 14px;
+      color: var(--text-main);
+      font-size: 0.9rem;
+      outline: none;
+      backdrop-filter: blur(10px);
+      transition: 0.2s;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 15px var(--accent-glow);
+    }
+
+    /* التصنيفات */
+    .categories {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+      scrollbar-width: none;
+    }
+    .categories::-webkit-scrollbar { display: none; }
+
+    .cat-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-sub);
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .cat-btn.active {
+      background: var(--accent);
+      color: #090d16;
+      font-weight: 800;
+      border-color: var(--accent);
+    }
+
+    /* قائمة الأغاني */
+    .song-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .song-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 16px;
+      backdrop-filter: blur(12px);
+      transition: transform 0.15s, border-color 0.2s;
+    }
+
+    .song-card:active {
+      transform: scale(0.98);
+    }
+
+    .song-card.playing {
+      border-color: var(--accent);
+      background: rgba(56, 189, 248, 0.1);
+    }
+
+    .song-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .cover {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .details h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .details span {
+      font-size: 0.78rem;
+      color: var(--text-sub);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: 0.2s;
+    }
+
+    .icon-btn.play-trigger {
+      background: var(--accent);
+      color: #090d16;
+      font-weight: bold;
+    }
+
+    /* المشغل السفلي العائم */
+    .player-bar {
+      position: fixed;
+      bottom: 12px;
+      left: 12px;
+      right: 12px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 20px;
+      padding: 12px 16px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 100;
+    }
+
+    .player-bar.visible {
+      display: flex;
+    }
+
+    .player-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .now-playing-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .now-playing-artist {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .progress-container {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.7rem;
+      color: var(--text-sub);
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--accent);
+      height: 4px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="welcome">
+      <h1 id="userName">أهلاً بك 🎧</h1>
+      <p>مكتبتك الموسيقية اليومية</p>
+    </div>
+    <span class="badge" id="songCount">0 أغاني</span>
+  </div>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="ابحث عن أغنية أو فنان..." oninput="filterSongs()">
+  </div>
+
+  <div class="categories" id="categoryTabs">
+    <button class="cat-btn active" onclick="setCategory('الكل', this)">الكل</button>
+    <button class="cat-btn" onclick="setCategory('راب', this)">راب</button>
+    <button class="cat-btn" onclick="setCategory('طرب', this)">طرب</button>
+    <button class="cat-btn" onclick="setCategory('هادئة', this)">هادئة</button>
+  </div>
+
+  <div class="song-list" id="songList"></div>
+
+  <!-- مشغل الصوت السفلي -->
+  <div class="player-bar" id="playerBar">
+    <div class="player-top">
+      <div>
+        <div class="now-playing-title" id="currentTitle">اسم الأغنية</div>
+        <div class="now-playing-artist" id="currentArtist">الفنان</div>
+      </div>
+      <div class="controls">
+        <button class="icon-btn" onclick="prevSong()">⏮</button>
+        <button class="icon-btn play-trigger" id="mainPlayBtn" onclick="togglePlay()">⏸</button>
+        <button class="icon-btn" onclick="nextSong()">⏭</button>
+      </div>
+    </div>
+    <div class="progress-container">
+      <span id="currentTime">0:00</span>
+      <input type="range" id="progressBar" value="0" min="0" max="100" oninput="seekAudio()">
+      <span id="durationTime">0:00</span>
+    </div>
+  </div>
+
+  <audio id="audioPlayer"></audio>
+
+  <script>
+    // 1. تهيئة تليجرام WebApp
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    // جلب اسم المستخدم من تليجرام تلقائياً
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+      document.getElementById('userName').innerText = `أهلاً ${tg.initDataUnsafe.user.first_name} 🎧`;
+    }
+
+    // 2. قائمة الأغاني (تقدر تعدلها وتضيف أغانيك هنا)
+    const songs = [
+      {
+        id: 1,
+        title: "موسيقى تجريبية 1",
+        artist: "فنان 1",
+        category: "راب",
+        icon: "🔥",
+        // ضع رابط ملف MP3 المباشر هنا
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+        // أو كود الأمر الذي يرسله للبوت إذا ضغطت زر الإرسال للمحادثة
+        botCommand: "song_1"
+      },
+      {
+        id: 2,
+        title: "موسيقى تجريبية 2",
+        artist: "فنان 2",
+        category: "طرب",
+        icon: "🎵",
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+        botCommand: "song_2"
+      },
+      {
+        id: 3,
+        title: "موسيقى هادئة 3",
+        artist: "فنان 3",
+        category: "هادئة",
+        icon: "🌙",
+        url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+        botCommand: "song_3"
+      }
+    ];
+
+    let currentCategory = 'الكل';
+    let currentIndex = -1;
+    const audio = document.getElementById('audioPlayer');
+    const playerBar = document.getElementById('playerBar');
+    const mainPlayBtn = document.getElementById('mainPlayBtn');
+    const progressBar = document.getElementById('progressBar');
+
+    // عرض الأغاني
+    function renderSongs() {
+      const list = document.getElementById('songList');
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      list.innerHTML = '';
+
+      const filtered = songs.filter(s => {
+        const matchCat = currentCategory === 'الكل' || s.category === currentCategory;
+        const matchText = s.title.toLowerCase().includes(query) || s.artist.toLowerCase().includes(query);
+        return matchCat && matchText;
+      });
+
+      document.getElementById('songCount').innerText = `${filtered.length} أغاني`;
+
+      filtered.forEach((song) => {
+        const originalIndex = songs.findIndex(item => item.id === song.id);
+        const isPlaying = originalIndex === currentIndex && !audio.paused;
+
+        const card = document.createElement('div');
+        card.className = `song-card ${originalIndex === currentIndex ? 'playing' : ''}`;
+        card.innerHTML = `
+          <div class="song-info" onclick="playSong(${originalIndex})">
+            <div class="cover">${song.icon}</div>
+            <div class="details">
+              <h3>${song.title}</h3>
+              <span>${song.artist} • ${song.category}</span>
+            </div>
+          </div>
+          <div class="actions">
+            <button class="icon-btn" title="إرسال للبوت" onclick="sendToBot('${song.botCommand}')">✈️</button>
+            <button class="icon-btn play-trigger" onclick="playSong(${originalIndex})">${isPlaying ? '⏸' : '▶'}</button>
+          </div>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    function setCategory(cat, btn) {
+      currentCategory = cat;
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderSongs();
+    }
+
+    function filterSongs() {
+      renderSongs();
+    }
+
+    function playSong(index) {
+      if (currentIndex === index) {
+        togglePlay();
+        return;
+      }
+      currentIndex = index;
+      const song = songs[index];
+      audio.src = song.url;
+      audio.play();
+
+      document.getElementById('currentTitle').innerText = song.title;
+      document.getElementById('currentArtist').innerText = song.artist;
+      playerBar.classList.add('visible');
+      mainPlayBtn.innerText = '⏸';
+      renderSongs();
+    }
+
+    function togglePlay() {
+      if (audio.paused) {
+        audio.play();
+        mainPlayBtn.innerText = '⏸';
+      } else {
+        audio.pause();
+        mainPlayBtn.innerText = '▶';
+      }
+      renderSongs();
+    }
+
+    function nextSong() {
+      if (songs.length === 0) return;
+      let next = (currentIndex + 1) % songs.length;
+      playSong(next);
+    }
+
+    function prevSong() {
+      if (songs.length === 0) return;
+      let prev = (currentIndex - 1 + songs.length) % songs.length;
+      playSong(prev);
+    }
+
+    // إرسال أمر للبوت ليقوم بإرسال الملف داخل المحادثة
+    function sendToBot(command) {
+      if (tg && tg.sendData) {
+        tg.sendData(command);
+      } else {
+        alert("هذه الميزة تعمل عند فتح الصفحة من داخل بوت تليجرام.");
+      }
+    }
+
+    // تحديث شريط التقدم
+    audio.addEventListener('timeupdate', () => {
+      if (audio.duration) {
+        progressBar.value = (audio.currentTime / audio.duration) * 100;
+        document.getElementById('currentTime').innerText = formatTime(audio.currentTime);
+        document.getElementById('durationTime').innerText = formatTime(audio.duration);
+      }
+    });
+
+    audio.addEventListener('ended', nextSong);
+
+    function seekAudio() {
+      if (audio.duration) {
+        audio.currentTime = (progressBar.value / 100) * audio.duration;
+      }
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m}:${s < 10 ? '0' : ''}${s}`;
+    }
+
+    // التشغيل المبدئي للقائمة
+    renderSongs();
+  </script>
+</body>
+</html>
